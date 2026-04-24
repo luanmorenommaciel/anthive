@@ -14,7 +14,6 @@ Subcommands (implemented incrementally):
 from __future__ import annotations
 
 import os
-import sys
 import time
 from pathlib import Path
 
@@ -76,7 +75,7 @@ def scan(
         try:
             result = do_scan(repo_root)
         except Exception as exc:  # noqa: BLE001
-            out.print(f"[red]Error scanning {repo_root}: {exc}[/]", file=sys.stderr)
+            typer.echo(f"Error scanning {repo_root}: {exc}", err=True)
             raise typer.Exit(code=2) from exc
 
         if json_out:
@@ -150,7 +149,88 @@ def _render_table(out: Console, result: object) -> None:
                 out.print(f"    [yellow]·[/] {p}")
 
 
-# TODO(p2): register `compose` subcommand
+# ---------------------------------------------------------------------------
+# p2 — compose subcommand
+# ---------------------------------------------------------------------------
+
+
+@app.command()
+def compose(
+    task_id: str | None = typer.Argument(None, help="Task ID; omit if --all-ready."),
+    all_ready: bool = typer.Option(False, "--all-ready", help="Compose for every ready task."),
+    dry_run: bool = typer.Option(False, "--dry-run", help="Print to stdout, don't write."),
+    repo_root: Path = typer.Option(Path.cwd(), "--repo", help="Repo root."),
+) -> None:
+    """Generate a deterministic session prompt for one task or every ready task."""
+    from .composer import compose as do_compose
+    from .scanner import scan as do_scan
+    from .schemas import parse_task_doc
+
+    result = do_scan(repo_root)
+
+    # Build (entry, task_path) pairs for all ready entries
+    all_ready_entries = list(result.ready)
+
+    if all_ready:
+        targets = [(e, repo_root / e.path) for e in all_ready_entries]
+    elif task_id:
+        matched = [e for e in all_ready_entries if e.id == task_id]
+        if not matched:
+            typer.echo(
+                f"Task {task_id!r} not found in ready set. "
+                f"Run `anthive scan` to see what's ready.",
+                err=True,
+            )
+            raise typer.Exit(code=1)
+        targets = [(matched[0], repo_root / matched[0].path)]
+    else:
+        typer.echo("Must specify task_id or --all-ready.", err=True)
+        raise typer.Exit(code=2)
+
+    # All ready + in-progress task IDs (for other_active computation)
+    # We fetch full TaskFrontmatter for every ready entry so we can pass them
+    # as other_active to the composer.
+    entry_frontmatters: dict[str, object] = {}
+    for entry in all_ready_entries:
+        fm = parse_task_doc(repo_root / entry.path)
+        if fm is not None:
+            entry_frontmatters[entry.id] = fm
+
+    prompts_dir = repo_root / "prompts"
+
+    for entry, task_path in targets:
+        fm = parse_task_doc(task_path)
+        if fm is None:
+            typer.echo(
+                f"Could not parse task frontmatter from {task_path}",
+                err=True,
+            )
+            raise typer.Exit(code=1)
+
+        # other_active = all ready tasks except this one
+        other_active = [
+            v
+            for k, v in entry_frontmatters.items()
+            if k != fm.id
+        ]
+
+        try:
+            prompt_text = do_compose(fm, task_path, repo_root, other_active)  # type: ignore[arg-type]
+        except ValueError as exc:
+            typer.echo(f"Compose failed for {fm.id!r}: {exc}", err=True)
+            raise typer.Exit(code=1) from exc
+
+        out_path = prompts_dir / f"{fm.id}.md"
+
+        if dry_run:
+            console.print(f"\n[bold]── prompts/{fm.id}.md ──[/]\n")
+            console.print(prompt_text)
+        else:
+            prompts_dir.mkdir(parents=True, exist_ok=True)
+            out_path.write_text(prompt_text, encoding="utf-8")
+            console.print(f"[green]✓[/] prompts/{fm.id}.md")
+
+
 # TODO(p3): register `dispatch` subcommand (local)
 # TODO(p4): register `watch` and `status` subcommands
 # TODO(p5): register `merge` subcommand
