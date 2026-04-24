@@ -1,0 +1,49 @@
+{
+  "scanned_at": "2026-04-24T17:45:00-03:00",
+  "repo_root": "/Users/luanmorenomaciel/GitHub/agent-context-protocol",
+  "tasks_dir": "tasks/",
+  "ready": [
+    {
+      "id": "T-20260424-card-violator-fix",
+      "path": "tasks/backlog.md#B-CARD-VALIDATOR-ALIAS-FIX",
+      "title": "Fix card_validator alias bug",
+      "effort": "S",
+      "budget_usd": 0,
+      "agent": "llm-evaluator-designer",
+      "touches_paths": [
+        "benchmark/card_validator.py",
+        "benchmark/tests/test_card_validator.py"
+      ],
+      "prefer_model": "sonnet"
+    }
+  ],
+  "blocked": [
+    {
+      "id": "T-20260424-heldout-eval",
+      "path": "tasks/phase-2b-heldout-synthesis.md",
+      "blocked_by": ["T-20260424-heldout-fixture"],
+      "reason": "depends on fixture not yet produced"
+    }
+  ],
+  "in_progress": [
+    {
+      "id": "T-20260424-bird-ingest",
+      "session_id": "s3-bird-pilot-ingest",
+      "started": "2026-04-24T16:01:00-03:00"
+    }
+  ],
+  "done": [
+    {
+      "id": "T-20260424-self-healing-scaffold",
+      "merged_at": "2026-04-24T17:10:00-03:00",
+      "pr": 10
+    }
+  ],
+  "conflicts": [
+    {
+      "task_ids": ["T-A", "T-B"],
+      "paths": ["benchmark/harness.py"],
+      "note": "both touch harness.py — serialize"
+    }
+  ]
+}
