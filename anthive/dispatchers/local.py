@@ -119,7 +119,7 @@ class LocalDispatcher(Dispatcher):
             env=child_env,
         )
 
-        return SessionHandle(
+        handle = SessionHandle(
             session_id=session_id_for(task.id),
             task_id=task.id,
             slug=paths["slug"],
@@ -129,6 +129,15 @@ class LocalDispatcher(Dispatcher):
             log_path=paths["log_path"],
             mode="local",
         )
+
+        # Best-effort: emit a lifecycle event if OTEL is active.
+        try:
+            from ..observability import emit_lifecycle_event
+            emit_lifecycle_event(handle.session_id, "INIT", "INIT", note="dispatched")
+        except Exception:  # noqa: BLE001
+            pass
+
+        return handle
 
     def status(self, handle: SessionHandle) -> str:
         """Read the session log and return the ``status`` field."""

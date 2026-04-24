@@ -476,7 +476,139 @@ def _count_tmux_sessions(prefix: str) -> int:
         return 0
 
 
-# TODO(p4): register `watch` and `status` subcommands
+# ---------------------------------------------------------------------------
+# p4 — watch subcommand
+# ---------------------------------------------------------------------------
+
+
+@app.command()
+def watch(
+    only: str | None = typer.Option(
+        None, "--only", help="Comma-separated session IDs (or prefixes) to filter."
+    ),
+    budget_alert: float | None = typer.Option(
+        None, "--budget-alert", help="USD threshold; ring terminal bell if any session exceeds it."
+    ),
+    plain: bool = typer.Option(False, "--plain", help="No ANSI/colors (CI-friendly)."),
+    refresh: float = typer.Option(3.0, "--refresh", help="Seconds between dashboard refreshes."),
+    repo_root: Path = typer.Option(Path.cwd(), "--repo", help="Repo root (default: cwd)."),
+) -> None:
+    """Live dashboard of all sessions with cost/tokens from Langfuse."""
+    from .config import load_config
+    from .langfuse_client import LangfuseClient
+    from .monitor import watch as do_watch
+    from .observability import init_tracing
+
+    out = _make_console(plain=plain)
+    cfg = load_config(repo_root)
+
+    # Best-effort OTEL init; never crash the CLI.
+    try:
+        init_tracing(endpoint=cfg["observability"].get("otel_endpoint"))
+    except Exception:  # noqa: BLE001
+        pass
+
+    lf_client = LangfuseClient(
+        base_url=cfg["observability"]["langfuse_url"],
+        public_key=os.environ.get("LANGFUSE_PUBLIC_KEY"),
+        secret_key=os.environ.get("LANGFUSE_SECRET_KEY"),
+    )
+
+    sessions_dir = repo_root / "logs" / "sessions"
+    if not sessions_dir.exists():
+        out.print(
+            "(no sessions yet — dispatch one with [cyan]anthive dispatch <id>[/])"
+        )
+        raise typer.Exit(code=0)
+
+    only_list = [s.strip() for s in only.split(",")] if only else None
+
+    do_watch(
+        sessions_dir,
+        lf_client,
+        only=only_list,
+        budget_alert=budget_alert,
+        refresh=refresh,
+        console=out,
+    )
+
+
+# ---------------------------------------------------------------------------
+# p4 — status subcommand
+# ---------------------------------------------------------------------------
+
+
+@app.command()
+def status(
+    only: str | None = typer.Option(
+        None, "--only", help="Comma-separated session IDs (or prefixes) to filter."
+    ),
+    plain: bool = typer.Option(False, "--plain", help="No ANSI/colors (CI-friendly)."),
+    json_out: bool = typer.Option(False, "--json", help="Emit machine-readable JSON to stdout."),
+    repo_root: Path = typer.Option(Path.cwd(), "--repo", help="Repo root (default: cwd)."),
+) -> None:
+    """One-shot fleet snapshot. Same data as watch, no live refresh."""
+    import json as _json
+
+    from .config import load_config
+    from .langfuse_client import LangfuseClient
+    from .monitor import snapshot as do_snapshot
+    from .observability import init_tracing
+    from .schemas import parse_session_log
+
+    out = _make_console(plain=plain)
+    cfg = load_config(repo_root)
+
+    # Best-effort OTEL init.
+    try:
+        init_tracing(endpoint=cfg["observability"].get("otel_endpoint"))
+    except Exception:  # noqa: BLE001
+        pass
+
+    lf_client = LangfuseClient(
+        base_url=cfg["observability"]["langfuse_url"],
+        public_key=os.environ.get("LANGFUSE_PUBLIC_KEY"),
+        secret_key=os.environ.get("LANGFUSE_SECRET_KEY"),
+    )
+
+    sessions_dir = repo_root / "logs" / "sessions"
+    if not sessions_dir.exists():
+        out.print(
+            "(no sessions yet — dispatch one with [cyan]anthive dispatch <id>[/])"
+        )
+        raise typer.Exit(code=0)
+
+    only_list = [s.strip() for s in only.split(",")] if only else None
+
+    if json_out:
+        # Emit JSON object per session with live Langfuse metrics.
+        rows: list[dict] = []
+        for p in sorted(sessions_dir.glob("*.md")):
+            if p.name == "_template.md":
+                continue
+            try:
+                fm = parse_session_log(p)
+            except Exception:  # noqa: BLE001
+                continue
+            if only_list and not any(f in fm.session_id for f in only_list):
+                continue
+            metrics = lf_client.get_session_metrics(fm.session_id)
+            rows.append(
+                {
+                    "session_id": fm.session_id,
+                    "task_id": fm.task_id,
+                    "status": fm.status,
+                    "model": fm.model,
+                    "last_note": fm.last_note,
+                    **metrics,
+                }
+            )
+        typer.echo(_json.dumps(rows, indent=2))
+        return
+
+    do_snapshot(sessions_dir, lf_client, only=only_list, console=out)
+
+
 # TODO(p5): register `merge` subcommand
 # TODO(p6): extend `dispatch` with --cloud
 # TODO(p7): register `capture` subcommand
