@@ -1,0 +1,46 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+dist/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Virtualenvs
+.venv/
+venv/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+.DS_Store
+
+# anthive runtime artifacts (never commit)
+worktrees/
+prompts/
+logs/sessions/*.md
+!logs/sessions/_template.md
+logs/archive/
+logs/decisions/
+
+# Staging area for captured tasks (human curates before promoting)
+tasks/pending/
+
+# Secrets — NEVER commit
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+
+# Docker volumes
+docker/*_pgdata/

@@ -1,0 +1,576 @@
+# Knowledge Base Index
+# Machine-readable registry for KB domains
+
+version: "3.0"
+last_updated: "2026-04-20"
+
+# File Size Limits (SINGLE SOURCE OF TRUTH)
+limits:
+  quick_reference: 100
+  concept: 150
+  pattern: 200
+  spec: null
+  reference: null
+
+# Templates
+templates:
+  - name: concept
+    path: _templates/concept.md.template
+  - name: pattern
+    path: _templates/pattern.md.template
+  - name: index
+    path: _templates/index.md.template
+  - name: quick-reference
+    path: _templates/quick-reference.md.template
+  - name: spec
+    path: _templates/spec.yaml.template
+  - name: test-case
+    path: _templates/test-case.json.template
+  - name: domain-manifest
+    path: _templates/domain-manifest.yaml.template
+
+# Shared Resources
+shared:
+  anti-patterns:
+    path: shared/anti-patterns.md
+    description: "Cross-agent anti-pattern library"
+
+# Domain Registry
+# ACT-specific KBs (new) + retained general-purpose KBs
+domains:
+
+  # ─── ACT Protocol (research thesis) ────────────────────────────────
+
+  act-protocol:
+    name: act-protocol
+    description: "ACT specification — two-layer (ACT-P + ACT-R), six principles, canonical scoreboard"
+    path: act-protocol/
+    mcp_validated: "2026-04-20"
+    entry_points:
+      index: index.md
+      quick_reference: quick-reference.md
+    concepts:
+      - name: two-layer-spec
+        path: concepts/two-layer-spec.md
+        confidence: 0.98
+      - name: six-principles
+        path: concepts/six-principles.md
+        confidence: 0.98
+      - name: scoreboard
+        path: concepts/scoreboard.md
+        confidence: 0.98
+      - name: anti-patterns
+        path: concepts/anti-patterns.md
+        confidence: 0.95
+    patterns:
+      - name: physical-design
+        path: patterns/physical-design.md
+        confidence: 0.95
+      - name: reading-layer-assembly
+        path: patterns/reading-layer-assembly.md
+        confidence: 0.95
+      - name: baseline-comparison
+        path: patterns/baseline-comparison.md
+        confidence: 0.95
+    specs:
+      - name: act-v8
+        path: specs/act-v8.yaml
+
+  agent-reading-layer:
+    name: agent-reading-layer
+    description: "ACT-R deep dive — six card types, grammar-vs-filters, token budget"
+    path: agent-reading-layer/
+    mcp_validated: "2026-04-20"
+    entry_points:
+      index: index.md
+      quick_reference: quick-reference.md
+    concepts:
+      - name: six-card-types
+        path: concepts/six-card-types.md
+        confidence: 0.98
+      - name: grammar-vs-filters
+        path: concepts/grammar-vs-filters.md
+        confidence: 0.98
+      - name: token-budget
+        path: concepts/token-budget.md
+        confidence: 0.90
+    patterns:
+      - name: card-authoring
+        path: patterns/card-authoring.md
+        confidence: 0.95
+      - name: arl-render
+        path: patterns/arl-render.md
+        confidence: 0.95
+    specs:
+      - name: arl-schema
+        path: specs/arl-schema.yaml
+
+  # ─── Engine and Benchmark ─────────────────────────────────────────
+
+  duckdb:
+    name: duckdb
+    description: "DuckDB for ACT benchmark — SQL dialect, Parquet I/O, EXPLAIN plans, Postgres attach"
+    path: duckdb/
+    mcp_validated: "2026-04-20"
+    entry_points:
+      index: index.md
+      quick_reference: quick-reference.md
+    concepts:
+      - name: sql-dialect
+        path: concepts/sql-dialect.md
+        confidence: 0.95
+      - name: explain-plans
+        path: concepts/explain-plans.md
+        confidence: 0.95
+      - name: postgres-attach
+        path: concepts/postgres-attach.md
+        confidence: 0.95
+    patterns:
+      - name: parquet-io
+        path: patterns/parquet-io.md
+        confidence: 0.95
+      - name: join-counting
+        path: patterns/join-counting.md
+        confidence: 0.95
+      - name: deterministic-runs
+        path: patterns/deterministic-runs.md
+        confidence: 0.95
+
+  benchmarking:
+    name: benchmarking
+    description: "LLM benchmark methodology — fair evaluation, reproducibility, token accounting, ground truth"
+    path: benchmarking/
+    mcp_validated: "2026-04-20"
+    entry_points:
+      index: index.md
+      quick_reference: quick-reference.md
+    concepts:
+      - name: fair-evaluation
+        path: concepts/fair-evaluation.md
+        confidence: 0.95
+      - name: reproducibility
+        path: concepts/reproducibility.md
+        confidence: 0.95
+      - name: token-accounting
+        path: concepts/token-accounting.md
+        confidence: 0.95
+      - name: ground-truth
+        path: concepts/ground-truth.md
+        confidence: 0.95
+    patterns:
+      - name: canonical-run
+        path: patterns/canonical-run.md
+        confidence: 0.95
+      - name: raw-json-logging
+        path: patterns/raw-json-logging.md
+        confidence: 0.95
+      - name: scoreboard-regen
+        path: patterns/scoreboard-regen.md
+        confidence: 0.95
+
+  research-writing:
+    name: research-writing
+    description: "Academic writing — paper structure, claim-evidence links, reproducibility section, figure captions"
+    path: research-writing/
+    mcp_validated: "2026-04-20"
+    entry_points:
+      index: index.md
+      quick_reference: quick-reference.md
+    concepts:
+      - name: paper-structure
+        path: concepts/paper-structure.md
+        confidence: 0.90
+      - name: claim-evidence-links
+        path: concepts/claim-evidence-links.md
+        confidence: 0.95
+      - name: reproducibility-checklist
+        path: concepts/reproducibility-checklist.md
+        confidence: 0.95
+    patterns:
+      - name: scoreboard-in-paper
+        path: patterns/scoreboard-in-paper.md
+        confidence: 0.95
+      - name: figure-captions
+        path: patterns/figure-captions.md
+        confidence: 0.90
+
+  # ─── Retained Core ─────────────────────────────────────────────────
+
+  data-modeling:
+    name: data-modeling
+    description: "Schema design — dimensional, Data Vault, SCD, OBT, schema evolution"
+    path: data-modeling/
+    mcp_validated: "2026-03-26"
+    entry_points:
+      index: index.md
+      quick_reference: quick-reference.md
+    concepts:
+      - name: dimensional-modeling
+        path: concepts/dimensional-modeling.md
+        confidence: 0.95
+      - name: scd-types
+        path: concepts/scd-types.md
+        confidence: 0.95
+      - name: normalization
+        path: concepts/normalization.md
+        confidence: 0.95
+      - name: schema-evolution
+        path: concepts/schema-evolution.md
+        confidence: 0.90
+    patterns:
+      - name: star-schema
+        path: patterns/star-schema.md
+        confidence: 0.95
+      - name: data-vault
+        path: patterns/data-vault.md
+        confidence: 0.90
+      - name: one-big-table
+        path: patterns/one-big-table.md
+        confidence: 0.90
+      - name: schema-migration
+        path: patterns/schema-migration.md
+        confidence: 0.90
+
+  data-quality:
+    name: data-quality
+    description: "Data quality — contracts, observability, Soda, Great Expectations, dbt tests"
+    path: data-quality/
+    mcp_validated: "2026-03-26"
+    entry_points:
+      index: index.md
+      quick_reference: quick-reference.md
+    concepts:
+      - name: data-contracts
+        path: concepts/data-contracts.md
+        confidence: 0.90
+      - name: quality-dimensions
+        path: concepts/quality-dimensions.md
+        confidence: 0.95
+      - name: observability
+        path: concepts/observability.md
+        confidence: 0.90
+      - name: soda-core
+        path: concepts/soda-core.md
+        confidence: 0.90
+    patterns:
+      - name: great-expectations
+        path: patterns/great-expectations.md
+        confidence: 0.95
+      - name: dbt-testing
+        path: patterns/dbt-testing.md
+        confidence: 0.95
+      - name: schema-validation
+        path: patterns/schema-validation.md
+        confidence: 0.90
+      - name: data-contract-authoring
+        path: patterns/data-contract-authoring.md
+        confidence: 0.90
+
+  sql-patterns:
+    name: sql-patterns
+    description: "Cross-dialect SQL — window functions, CTEs, deduplication, DuckDB/Snowflake/BigQuery"
+    path: sql-patterns/
+    mcp_validated: "2026-03-26"
+    entry_points:
+      index: index.md
+      quick_reference: quick-reference.md
+    concepts:
+      - name: window-functions
+        path: concepts/window-functions.md
+        confidence: 0.95
+      - name: cte-patterns
+        path: concepts/cte-patterns.md
+        confidence: 0.95
+      - name: set-operations
+        path: concepts/set-operations.md
+        confidence: 0.95
+    patterns:
+      - name: deduplication
+        path: patterns/deduplication.md
+        confidence: 0.95
+      - name: gap-and-island
+        path: patterns/gap-and-island.md
+        confidence: 0.90
+      - name: pivot-unpivot
+        path: patterns/pivot-unpivot.md
+        confidence: 0.90
+      - name: cross-dialect
+        path: patterns/cross-dialect.md
+        confidence: 0.90
+
+  lakehouse:
+    name: lakehouse
+    description: "Open table formats and catalogs — Iceberg, Delta, DuckLake"
+    path: lakehouse/
+    mcp_validated: "2026-03-26"
+    entry_points:
+      index: index.md
+      quick_reference: quick-reference.md
+    concepts:
+      - name: iceberg-v3
+        path: concepts/iceberg-v3.md
+        confidence: 0.90
+      - name: delta-lake
+        path: concepts/delta-lake.md
+        confidence: 0.90
+      - name: catalog-wars
+        path: concepts/catalog-wars.md
+        confidence: 0.90
+      - name: ducklake
+        path: concepts/ducklake.md
+        confidence: 0.85
+    patterns:
+      - name: iceberg-operations
+        path: patterns/iceberg-operations.md
+        confidence: 0.90
+      - name: delta-operations
+        path: patterns/delta-operations.md
+        confidence: 0.90
+
+  medallion:
+    name: medallion
+    description: "Medallion Architecture — Bronze/Silver/Gold (context for model_gold comparison)"
+    path: medallion/
+    mcp_validated: "2026-03-26"
+    entry_points:
+      index: index.md
+      quick_reference: quick-reference.md
+    concepts:
+      - name: bronze-layer
+        path: concepts/bronze-layer.md
+        confidence: 0.95
+      - name: silver-layer
+        path: concepts/silver-layer.md
+        confidence: 0.95
+      - name: gold-layer
+        path: concepts/gold-layer.md
+        confidence: 0.95
+      - name: domain-modeling
+        path: concepts/domain-modeling.md
+        confidence: 0.90
+    patterns:
+      - name: layer-transitions
+        path: patterns/layer-transitions.md
+        confidence: 0.95
+      - name: data-quality-gates
+        path: patterns/data-quality-gates.md
+        confidence: 0.90
+      - name: incremental-loading
+        path: patterns/incremental-loading.md
+        confidence: 0.90
+      - name: schema-evolution
+        path: patterns/schema-evolution.md
+        confidence: 0.90
+
+  modern-stack:
+    name: modern-stack
+    description: "Modern data tools — DuckDB, Polars, SQLMesh, Evidence.dev (local-first analytics)"
+    path: modern-stack/
+    mcp_validated: "2026-03-26"
+    entry_points:
+      index: index.md
+      quick_reference: quick-reference.md
+    concepts:
+      - name: duckdb
+        path: concepts/duckdb.md
+        confidence: 0.90
+      - name: polars
+        path: concepts/polars.md
+        confidence: 0.90
+      - name: sqlmesh
+        path: concepts/sqlmesh.md
+        confidence: 0.85
+      - name: analytics-engineering
+        path: concepts/analytics-engineering.md
+        confidence: 0.85
+    patterns:
+      - name: duckdb-patterns
+        path: patterns/duckdb-patterns.md
+        confidence: 0.90
+      - name: polars-patterns
+        path: patterns/polars-patterns.md
+        confidence: 0.90
+      - name: sqlmesh-workflow
+        path: patterns/sqlmesh-workflow.md
+        confidence: 0.85
+      - name: local-first-analytics
+        path: patterns/local-first-analytics.md
+        confidence: 0.85
+
+  prompt-engineering:
+    name: prompt-engineering
+    description: "Prompt engineering — chain-of-thought, structured extraction, few-shot, system prompts"
+    path: prompt-engineering/
+    mcp_validated: "2026-03-26"
+    entry_points:
+      index: index.md
+      quick_reference: quick-reference.md
+    concepts:
+      - name: chain-of-thought
+        path: concepts/chain-of-thought.md
+        confidence: 0.90
+      - name: few-shot-prompting
+        path: concepts/few-shot-prompting.md
+        confidence: 0.90
+      - name: output-formatting
+        path: concepts/output-formatting.md
+        confidence: 0.90
+      - name: structured-extraction
+        path: concepts/structured-extraction.md
+        confidence: 0.90
+      - name: system-prompts
+        path: concepts/system-prompts.md
+        confidence: 0.90
+    patterns:
+      - name: document-extraction
+        path: patterns/document-extraction.md
+        confidence: 0.90
+      - name: multi-pass-extraction
+        path: patterns/multi-pass-extraction.md
+        confidence: 0.90
+      - name: prompt-template
+        path: patterns/prompt-template.md
+        confidence: 0.90
+      - name: validation-prompts
+        path: patterns/validation-prompts.md
+        confidence: 0.90
+
+  genai:
+    name: genai
+    description: "GenAI architecture — multi-agent systems, RAG, state machines, tool calling, guardrails"
+    path: genai/
+    mcp_validated: "2026-03-26"
+    entry_points:
+      index: index.md
+      quick_reference: quick-reference.md
+    concepts:
+      - name: multi-agent-systems
+        path: concepts/multi-agent-systems.md
+        confidence: 0.90
+      - name: rag-architecture
+        path: concepts/rag-architecture.md
+        confidence: 0.90
+      - name: tool-calling
+        path: concepts/tool-calling.md
+        confidence: 0.90
+      - name: state-machines
+        path: concepts/state-machines.md
+        confidence: 0.90
+      - name: guardrails
+        path: concepts/guardrails.md
+        confidence: 0.90
+    patterns:
+      - name: agentic-workflow
+        path: patterns/agentic-workflow.md
+        confidence: 0.90
+      - name: chatbot-architecture
+        path: patterns/chatbot-architecture.md
+        confidence: 0.90
+      - name: evaluation-framework
+        path: patterns/evaluation-framework.md
+        confidence: 0.90
+      - name: rag-pipeline
+        path: patterns/rag-pipeline.md
+        confidence: 0.90
+
+  pydantic:
+    name: pydantic
+    description: "Pydantic — BaseModel, validators, LLM output validation"
+    path: pydantic/
+    mcp_validated: "2026-03-26"
+    entry_points:
+      index: index.md
+      quick_reference: quick-reference.md
+    concepts:
+      - name: base-model
+        path: concepts/base-model.md
+        confidence: 0.95
+      - name: field-types
+        path: concepts/field-types.md
+        confidence: 0.95
+      - name: nested-models
+        path: concepts/nested-models.md
+        confidence: 0.90
+      - name: validators
+        path: concepts/validators.md
+        confidence: 0.95
+    patterns:
+      - name: custom-validators
+        path: patterns/custom-validators.md
+        confidence: 0.95
+      - name: error-handling
+        path: patterns/error-handling.md
+        confidence: 0.90
+      - name: extraction-schema
+        path: patterns/extraction-schema.md
+        confidence: 0.90
+      - name: llm-output-validation
+        path: patterns/llm-output-validation.md
+        confidence: 0.90
+
+  python:
+    name: python
+    description: "Python — dataclasses, type hints, generators, async, project structure"
+    path: python/
+    mcp_validated: "2026-03-26"
+    entry_points:
+      index: index.md
+      quick_reference: quick-reference.md
+    concepts:
+      - name: dataclasses
+        path: concepts/dataclasses.md
+        confidence: 0.95
+      - name: type-hints
+        path: concepts/type-hints.md
+        confidence: 0.95
+      - name: generators
+        path: concepts/generators.md
+        confidence: 0.90
+      - name: context-managers
+        path: concepts/context-managers.md
+        confidence: 0.90
+    patterns:
+      - name: clean-architecture
+        path: patterns/clean-architecture.md
+        confidence: 0.90
+      - name: error-handling
+        path: patterns/error-handling.md
+        confidence: 0.90
+      - name: file-parser
+        path: patterns/file-parser.md
+        confidence: 0.90
+      - name: functional-patterns
+        path: patterns/functional-patterns.md
+        confidence: 0.90
+
+  testing:
+    name: testing
+    description: "Testing — pytest, fixtures, mocking, parametrize, integration tests"
+    path: testing/
+    mcp_validated: "2026-03-26"
+    entry_points:
+      index: index.md
+      quick_reference: quick-reference.md
+    concepts:
+      - name: pytest-basics
+        path: concepts/pytest-basics.md
+        confidence: 0.95
+      - name: fixtures
+        path: concepts/fixtures.md
+        confidence: 0.95
+      - name: mocking
+        path: concepts/mocking.md
+        confidence: 0.90
+      - name: parametrize
+        path: concepts/parametrize.md
+        confidence: 0.90
+    patterns:
+      - name: unit-test-patterns
+        path: patterns/unit-test-patterns.md
+        confidence: 0.95
+      - name: fixture-factories
+        path: patterns/fixture-factories.md
+        confidence: 0.90
+      - name: integration-tests
+        path: patterns/integration-tests.md
+        confidence: 0.90

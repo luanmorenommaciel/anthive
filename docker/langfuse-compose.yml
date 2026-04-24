@@ -1,0 +1,58 @@
+# Self-hosted Langfuse for anthive observability.
+#
+# Start:   docker compose -f docker/langfuse-compose.yml up -d
+# Access:  http://localhost:3000
+# Stop:    docker compose -f docker/langfuse-compose.yml down
+#
+# First-time setup:
+#   1. docker compose up -d
+#   2. Open http://localhost:3000
+#   3. Create an account (stays local)
+#   4. Create a project named "anthive"
+#   5. Copy the public + secret API keys
+#   6. Export them:
+#        export LANGFUSE_PUBLIC_KEY=pk-lf-...
+#        export LANGFUSE_SECRET_KEY=sk-lf-...
+#
+# anthive reads these env vars via observability.langfuse_client.
+
+version: "3.8"
+
+services:
+  langfuse-db:
+    image: postgres:16
+    container_name: anthive-langfuse-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: langfuse
+      POSTGRES_PASSWORD: langfuse
+      POSTGRES_DB: langfuse
+    volumes:
+      - langfuse_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U langfuse"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  langfuse:
+    image: langfuse/langfuse:3
+    container_name: anthive-langfuse
+    restart: unless-stopped
+    depends_on:
+      langfuse-db:
+        condition: service_healthy
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL: postgresql://langfuse:langfuse@langfuse-db:5432/langfuse
+      NEXTAUTH_SECRET: change-me-in-prod
+      SALT: change-me-in-prod
+      NEXTAUTH_URL: http://localhost:3000
+      TELEMETRY_ENABLED: "false"
+      # OTEL ingestion
+      OTEL_EXPORTER_OTLP_ENDPOINT_ENABLED: "true"
+
+volumes:
+  langfuse_pgdata:
+    name: anthive_langfuse_pgdata
