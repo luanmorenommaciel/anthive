@@ -14,6 +14,7 @@ Subcommands (implemented incrementally):
 from __future__ import annotations
 
 import os
+import subprocess
 import time
 from pathlib import Path
 
@@ -231,7 +232,250 @@ def compose(
             console.print(f"[green]✓[/] prompts/{fm.id}.md")
 
 
-# TODO(p3): register `dispatch` subcommand (local)
+# ---------------------------------------------------------------------------
+# p3 — dispatch subcommand (local)
+# ---------------------------------------------------------------------------
+
+
+@app.command()
+def dispatch(
+    task_id: str | None = typer.Argument(None, help="Task ID to dispatch; omit if --all-ready."),
+    all_ready: bool = typer.Option(False, "--all-ready", help="Dispatch every ready task."),
+    local: bool = typer.Option(True, "--local/--no-local", help="Dispatch locally via tmux (default)."),
+    cloud: bool = typer.Option(False, "--cloud", help="Dispatch via Managed Agents (p6 — not yet implemented)."),
+    dry_run: bool = typer.Option(False, "--dry-run", help="Print actions without executing."),
+    yes: bool = typer.Option(False, "--yes", "-y", help="Skip the confirmation prompt."),
+    json_out: bool = typer.Option(False, "--json", help="Emit machine-readable JSON to stdout."),
+    plain: bool = typer.Option(False, "--plain", help="No ANSI/colors (CI-friendly)."),
+    repo_root: Path = typer.Option(Path.cwd(), "--repo", help="Repo root (default: cwd)."),
+) -> None:
+    """Dispatch task(s) to Claude Code session(s)."""
+    from .config import load_config
+    from .dispatchers.base import AlreadyDispatchedError, PreflightError
+    from .dispatchers.local import LocalDispatcher
+    from .scanner import scan as do_scan
+    from .schemas import parse_task_doc
+
+    out = _make_console(plain=plain)
+
+    # ------------------------------------------------------------------
+    # 1. Guard: cloud not implemented yet
+    # ------------------------------------------------------------------
+    if cloud:
+        typer.echo(
+            "Cloud dispatch lands in p6. Re-run with --local or wait for p6.",
+            err=True,
+        )
+        raise typer.Exit(code=2)
+
+    # ------------------------------------------------------------------
+    # 2. Load config
+    # ------------------------------------------------------------------
+    cfg = load_config(repo_root)
+
+    # ------------------------------------------------------------------
+    # 3. Scan to find ready tasks
+    # ------------------------------------------------------------------
+    try:
+        result = do_scan(repo_root)
+    except Exception as exc:  # noqa: BLE001
+        typer.echo(f"Error scanning {repo_root}: {exc}", err=True)
+        raise typer.Exit(code=1) from exc
+
+    ready_map = {e.id: e for e in result.ready}
+
+    # ------------------------------------------------------------------
+    # 4. Build target list
+    # ------------------------------------------------------------------
+    if all_ready:
+        targets = list(result.ready)
+    elif task_id:
+        if task_id not in ready_map:
+            typer.echo(
+                f"Task {task_id!r} not found in the ready set. "
+                f"Run `anthive scan` to see what's ready.",
+                err=True,
+            )
+            raise typer.Exit(code=1)
+        targets = [ready_map[task_id]]
+    else:
+        typer.echo(
+            "Specify a task_id argument or pass --all-ready.",
+            err=True,
+        )
+        raise typer.Exit(code=2)
+
+    if not targets:
+        out.print("[yellow]No ready tasks to dispatch.[/]")
+        raise typer.Exit(code=0)
+
+    # ------------------------------------------------------------------
+    # 5. Concurrency cap pre-check
+    # ------------------------------------------------------------------
+    max_concurrent: int = cfg["dispatcher"]["local"].get("max_concurrent_sessions", 4)
+    prefix: str = cfg["dispatcher"]["local"].get("tmux_session_prefix", "anthive-")
+
+    # Count existing tmux sessions matching our prefix (best-effort).
+    existing_count = _count_tmux_sessions(prefix)
+
+    schedulable = max(0, max_concurrent - existing_count)
+    over_cap = len(targets) > schedulable
+
+    if schedulable == 0:
+        typer.echo(
+            f"Concurrency cap reached ({existing_count}/{max_concurrent} sessions active). "
+            f"No new sessions will be dispatched.",
+            err=True,
+        )
+        raise typer.Exit(code=3)
+
+    targets_to_run = targets[:schedulable]
+    targets_skipped = targets[schedulable:]
+
+    # ------------------------------------------------------------------
+    # 6. Confirmation panel
+    # ------------------------------------------------------------------
+    from rich.panel import Panel
+    from rich.table import Table
+
+    tbl = Table(show_header=True, header_style="bold", box=None)
+    tbl.add_column("ID", style="cyan", no_wrap=True)
+    tbl.add_column("Title")
+    tbl.add_column("Agent")
+    tbl.add_column("Budget", justify="right")
+
+    for e in targets_to_run:
+        budget = f"${e.budget_usd:.2f}" if e.budget_usd else "-"
+        tbl.add_row(e.id, e.title, e.agent, budget)
+
+    mode_label = "DRY RUN — " if dry_run else ""
+    out.print(
+        Panel(
+            tbl,
+            title=f"[bold]{mode_label}Dispatch {len(targets_to_run)} task(s) — local[/]",
+            expand=False,
+        )
+    )
+
+    if targets_skipped:
+        out.print(
+            f"[yellow]Warning:[/] {len(targets_skipped)} task(s) will be skipped "
+            f"(concurrency cap {max_concurrent})."
+        )
+
+    if not dry_run and not yes:
+        confirmed = typer.confirm("Proceed?", default=True)
+        if not confirmed:
+            raise typer.Abort()
+
+    # ------------------------------------------------------------------
+    # 7. Dispatch each target
+    # ------------------------------------------------------------------
+    local_cfg = cfg["dispatcher"]["local"]
+    obs_cfg = cfg.get("observability", {})
+
+    handles = []
+    dispatched_ids: list[dict] = []
+
+    for entry in targets_to_run:
+        # Resolve full TaskFrontmatter from the task file.
+        task_path = repo_root / entry.path
+        fm = parse_task_doc(task_path)
+        if fm is None:
+            typer.echo(f"Could not parse frontmatter from {task_path}; skipping.", err=True)
+            continue
+
+        # Resolve prompt: use existing file if present, otherwise compose on the fly.
+        from .composer import compose as do_compose, slugify
+
+        prompts_dir = repo_root / cfg["paths"].get("prompts_dir", "prompts/")
+        prompt_file = prompts_dir / f"{fm.id}.md"
+
+        if prompt_file.exists():
+            prompt_text = prompt_file.read_text(encoding="utf-8")
+        else:
+            other_active_entries = [
+                parse_task_doc(repo_root / e.path)
+                for e in result.ready
+                if e.id != fm.id
+            ]
+            other_active = [t for t in other_active_entries if t is not None]
+            try:
+                prompt_text = do_compose(fm, task_path, repo_root, other_active)
+            except ValueError as exc:
+                typer.echo(f"Compose failed for {fm.id!r}: {exc}", err=True)
+                raise typer.Exit(code=1) from exc
+
+        slug = slugify(fm.id)
+
+        if dry_run:
+            worktree_dir = local_cfg.get("worktree_dir", "worktrees/")
+            pane = f"{prefix}{slug}"
+            out.print(
+                f"[yellow]DRY RUN:[/] would dispatch [cyan]{fm.id}[/] "
+                f"to worktree [dim]{worktree_dir}{slug}[/], "
+                f"tmux [dim]{pane}[/]"
+            )
+            continue
+
+        dispatcher = LocalDispatcher(local_cfg, obs_cfg)
+        try:
+            handle = dispatcher.dispatch(fm, prompt_text, repo_root)
+        except AlreadyDispatchedError as exc:
+            out.print(f"[yellow]Already dispatched:[/] {exc}")
+            continue
+        except PreflightError as exc:
+            typer.echo(f"Pre-flight failed for {fm.id!r}: {exc}", err=True)
+            raise typer.Exit(code=1) from exc
+
+        handles.append(handle)
+        dispatched_ids.append({
+            "session_id": handle.session_id,
+            "task_id": handle.task_id,
+            "container": handle.container,
+            "log_path": str(handle.log_path),
+            "branch": handle.branch,
+        })
+
+        out.print(
+            f"[green]✓[/] [cyan]{handle.session_id}[/] at "
+            f"tmux://[bold]{handle.container}[/]"
+        )
+        out.print(f"  log: [dim]{handle.log_path}[/]")
+
+    # ------------------------------------------------------------------
+    # 8. JSON output (if requested)
+    # ------------------------------------------------------------------
+    if json_out and dispatched_ids:
+        import json
+        typer.echo(json.dumps(dispatched_ids, indent=2))
+
+    # ------------------------------------------------------------------
+    # 9. Exit codes
+    # ------------------------------------------------------------------
+    if targets_skipped and not dry_run:
+        raise typer.Exit(code=3)
+
+
+def _count_tmux_sessions(prefix: str) -> int:
+    """Count running tmux sessions whose name starts with *prefix*.
+
+    Returns 0 if tmux is not installed or no server is running.
+    """
+    try:
+        result = subprocess.run(
+            ["tmux", "ls", "-F", "#{session_name}"],
+            capture_output=True,
+            text=True,
+        )
+        if result.returncode != 0:
+            return 0
+        names = [line.strip() for line in result.stdout.splitlines() if line.strip()]
+        return sum(1 for n in names if n.startswith(prefix))
+    except FileNotFoundError:
+        return 0
+
+
 # TODO(p4): register `watch` and `status` subcommands
 # TODO(p5): register `merge` subcommand
 # TODO(p6): extend `dispatch` with --cloud
