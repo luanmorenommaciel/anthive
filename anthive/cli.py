@@ -609,7 +609,96 @@ def status(
     do_snapshot(sessions_dir, lf_client, only=only_list, console=out)
 
 
-# TODO(p5): register `merge` subcommand
+# ---------------------------------------------------------------------------
+# p5 — merge subcommand
+# ---------------------------------------------------------------------------
+
+
+@app.command()
+def merge(
+    dry_run: bool = typer.Option(False, "--dry-run", help="Show what would merge; do not execute."),
+    auto: bool = typer.Option(False, "--auto", "-a", help="Skip confirmation prompts (CI-friendly)."),
+    repo_root: Path = typer.Option(Path.cwd(), "--repo", help="Repo root (default: cwd)."),
+    json_out: bool = typer.Option(False, "--json", help="Emit machine-readable JSON to stdout."),
+) -> None:
+    """Reconcile logs/merge-queue.md — land PRs in dependency order.
+
+    Reads the merge queue, resolves dependency ordering (topological sort), and
+    merges each eligible branch into main with ``git merge --no-ff``.  Runs the
+    per-session exit_check before each merge when one is specified.
+
+    Exit codes:
+      0  All processed rows are ``merged`` or ``would_merge``.
+      1  At least one row ended in ``merge_conflict``, ``exit_check_failed``,
+         ``missing_branch``, or ``deadlocked``.
+
+    TODO(p6): --reorder interactive reorder UI via questionary.
+    """
+    import json as _json
+
+    from .merger import MergeResult, reconcile
+
+    try:
+        results = reconcile(repo_root, dry_run=dry_run, auto=auto)
+    except Exception as exc:  # noqa: BLE001
+        typer.echo(f"merge failed: {exc}", err=True)
+        raise typer.Exit(code=1) from exc
+
+    if json_out:
+        payload = [
+            {
+                "session_name": r.session_name,
+                "action": r.action,
+                "pr": r.pr,
+                "detail": r.detail,
+            }
+            for r in results
+        ]
+        typer.echo(_json.dumps(payload, indent=2))
+        # Determine exit code from results
+        _bad = {"merge_conflict", "exit_check_failed", "missing_branch", "deadlocked", "skipped"}
+        raise typer.Exit(code=0 if not any(r.action in _bad for r in results) else 1)
+
+    # Rich rendering
+    _render_merge_results(console, results)
+
+    bad_actions = {"merge_conflict", "exit_check_failed", "missing_branch", "deadlocked"}
+    if any(r.action in bad_actions for r in results):
+        raise typer.Exit(code=1)
+
+
+def _render_merge_results(out: Console, results: list) -> None:
+    """Render merge results as sequential Rich-styled lines."""
+    from rich.table import Table
+
+    if not results:
+        out.print("[dim](merge queue is empty or all rows already merged)[/]")
+        return
+
+    table = Table(show_header=True, header_style="bold", box=None)
+    table.add_column("Session", style="cyan", no_wrap=True)
+    table.add_column("Action", justify="center")
+    table.add_column("PR")
+    table.add_column("Detail")
+
+    action_styles = {
+        "merged": "[green]merged[/]",
+        "would_merge": "[yellow]would_merge[/]",
+        "merge_conflict": "[red]merge_conflict[/]",
+        "exit_check_failed": "[red]exit_check_failed[/]",
+        "missing_branch": "[red]missing_branch[/]",
+        "skipped": "[dim]skipped[/]",
+        "deadlocked": "[bold red]deadlocked[/]",
+    }
+
+    for r in results:
+        action_cell = action_styles.get(r.action, r.action)
+        detail_snippet = (r.detail or "")[:80]
+        table.add_row(r.session_name, action_cell, r.pr or "", detail_snippet)
+
+    out.print(table)
+
+
 # TODO(p6): extend `dispatch` with --cloud
 # TODO(p7): register `capture` subcommand
 
