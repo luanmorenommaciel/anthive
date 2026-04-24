@@ -110,7 +110,9 @@ def _split_frontmatter(text: str) -> tuple[dict, str]:
 # Contract 1 — TaskFrontmatter
 # ---------------------------------------------------------------------------
 
-_TASK_ID_RE = re.compile(r"^(T-\d{8}-[a-z0-9-]+|p\d+-[a-z0-9-]+)$")
+_TASK_ID_RE = re.compile(
+    r"^(T-\d{8}-[a-z0-9-]+|p\d+-[a-z0-9-]+|B-[A-Z0-9][A-Z0-9-]*)$"
+)
 
 
 class TaskFrontmatter(BaseModel):
