@@ -699,6 +699,35 @@ def _render_merge_results(out: Console, results: list) -> None:
     out.print(table)
 
 
+# ---------------------------------------------------------------------------
+# heartbeat subcommand — sessions update their own state
+# ---------------------------------------------------------------------------
+
+
+@app.command()
+def heartbeat(
+    session_id: str = typer.Argument(..., help="Session id, with or without 'sess-' prefix."),
+    state: str = typer.Argument(..., help="New status (INIT/COOKING/CHECKPOINT/READY-TO-MERGE/MERGED/BLOCKED)."),
+    note: str = typer.Argument("", help="Optional one-line note."),
+    repo_root: Path = typer.Option(Path.cwd(), "--repo", help="Repo root (default: cwd)."),
+) -> None:
+    """Update a session log's status + last_heartbeat + timeline."""
+    from pydantic import ValidationError
+
+    from .heartbeat import heartbeat as do_heartbeat
+
+    try:
+        log_path = do_heartbeat(repo_root, session_id, state, note)
+    except FileNotFoundError as exc:
+        typer.echo(str(exc), err=True)
+        raise typer.Exit(code=1) from exc
+    except ValidationError as exc:
+        typer.echo(f"Invalid state {state!r}: {exc}", err=True)
+        raise typer.Exit(code=2) from exc
+
+    typer.echo(f"✓ {log_path} → {state}")
+
+
 # TODO(p6): extend `dispatch` with --cloud
 # TODO(p7): register `capture` subcommand
 
