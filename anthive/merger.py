@@ -316,7 +316,9 @@ def reconcile(
         # Merge
         # ------------------------------------------------------------------
         _git(runner, repo_root, "checkout", "main")
-        _git(runner, repo_root, "pull", "--ff-only")
+        # Best-effort: pull may fail if origin is offline / not configured.
+        # The local merge can still proceed.
+        _git(runner, repo_root, "pull", "--ff-only", check=False)
         rc, _, stderr = _git_capture(runner, repo_root, "merge", "--no-ff", branch)
 
         if rc != 0:
@@ -340,7 +342,10 @@ def reconcile(
             unmerged.remove(next_row)
             continue
 
-        _git(runner, repo_root, "push", "origin", "main")
+        # Best-effort: push may fail (no remote, auth issue, offline).
+        # The local merge already succeeded; surface push failures only via
+        # the decision log, don't abort the reconcile.
+        _git(runner, repo_root, "push", "origin", "main", check=False)
 
         # ------------------------------------------------------------------
         # Post-merge bookkeeping

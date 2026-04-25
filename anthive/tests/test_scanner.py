@@ -477,17 +477,19 @@ class TestRoundTripAndDogfood:
         # At least p0-contracts is done; the rest of the plan exists somewhere
         assert len(done_ids) >= 1
 
-        # All classified IDs match the expected patterns
+        # All TaskFrontmatter-derived IDs (ready/blocked) match the strict
+        # frontmatter regex. Done/in_progress IDs may also include bare
+        # session names recovered from logs/merge-queue.md, which the
+        # scanner classifies as best-effort fallbacks.
         import re
-        id_pattern = re.compile(r"^(p\d+-[a-z0-9-]+|T-\d{8}-[a-z0-9-]+|B-[A-Z0-9-]+)$")
-        all_ids = (
-            [r.id for r in result.ready]
-            + [b.id for b in result.blocked]
-            + [d.id for d in result.done]
-            + [ip.id for ip in result.in_progress]
-        )
-        for tid in all_ids:
-            assert id_pattern.match(tid), f"Unexpected ID format: {tid!r}"
+        strict = re.compile(r"^(p\d+-[a-z0-9-]+|T-\d{8}-[a-z0-9-]+|B-[A-Z0-9-]+)$")
+        slug = re.compile(r"^[a-z0-9][a-z0-9-]*$")
+        for entry in [*result.ready, *result.blocked]:
+            assert strict.match(entry.id), f"Frontmatter id must be strict: {entry.id!r}"
+        for entry in [*result.done, *result.in_progress]:
+            assert strict.match(entry.id) or slug.match(entry.id), (
+                f"Unexpected ID format: {entry.id!r}"
+            )
 
 
 # ---------------------------------------------------------------------------
