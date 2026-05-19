@@ -15,16 +15,14 @@ Total: 17 tests
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from dataclasses import dataclass
+from datetime import UTC, datetime
 from pathlib import Path
 
-import pytest
 from typer.testing import CliRunner
 
 from anthive.cli import app
 from anthive.merger import (
-    MergeResult,
     archive_session_log,
     mark_row_merged,
     reconcile,
@@ -39,7 +37,7 @@ from anthive.schemas import MergeQueueRow
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
-_NOW = datetime(2026, 4, 24, 12, 0, 0, tzinfo=timezone.utc)
+_NOW = datetime(2026, 4, 24, 12, 0, 0, tzinfo=UTC)
 _NOW_FN = lambda: _NOW  # noqa: E731  — deterministic timestamp injector
 
 
@@ -298,10 +296,13 @@ class TestDryRun:
         """All results are 'would_merge' and runner is never invoked."""
         repo = _make_fake_repo(tmp_path)
         queue_path = repo / "logs" / "merge-queue.md"
-        _write_queue(queue_path, [
-            _queue_line("row-alpha"),
-            _queue_line("row-beta"),
-        ])
+        _write_queue(
+            queue_path,
+            [
+                _queue_line("row-alpha"),
+                _queue_line("row-beta"),
+            ],
+        )
         runner = RecordingRunner()
 
         results = reconcile(repo, dry_run=True, auto=True, runner=runner, now_fn=_NOW_FN)
@@ -313,10 +314,13 @@ class TestDryRun:
         """Dry-run emits A before B when B depends on A."""
         repo = _make_fake_repo(tmp_path)
         queue_path = repo / "logs" / "merge-queue.md"
-        _write_queue(queue_path, [
-            _queue_line("A", depends_on="none"),
-            _queue_line("B", depends_on="A"),
-        ])
+        _write_queue(
+            queue_path,
+            [
+                _queue_line("A", depends_on="none"),
+                _queue_line("B", depends_on="A"),
+            ],
+        )
         runner = RecordingRunner()
 
         results = reconcile(repo, dry_run=True, auto=True, runner=runner, now_fn=_NOW_FN)
@@ -366,7 +370,7 @@ class TestReconcile:
 
         # Verify expected git verbs were called
         git_verbs = [c["cmd"][1] for c in runner.calls if not c["shell"]]
-        assert "rev-parse" in git_verbs   # branch existence check
+        assert "rev-parse" in git_verbs  # branch existence check
         assert "checkout" in git_verbs
         assert "pull" in git_verbs
         assert "merge" in git_verbs

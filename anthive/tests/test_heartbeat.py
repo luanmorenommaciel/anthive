@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
@@ -17,8 +17,8 @@ from anthive.schemas import (
     write_session_log,
 )
 
-_EPOCH = datetime(1970, 1, 1, tzinfo=timezone.utc)
-_FAKE_NOW = datetime(2026, 4, 25, 10, 30, tzinfo=timezone.utc)
+_EPOCH = datetime(1970, 1, 1, tzinfo=UTC)
+_FAKE_NOW = datetime(2026, 4, 25, 10, 30, tzinfo=UTC)
 
 
 def _seed_log(
@@ -88,10 +88,7 @@ class TestHeartbeat:
 
         text = path.read_text(encoding="utf-8")
         # New bullet present with state and note.
-        assert (
-            "- **2026-04-25T10:30:00+00:00** · `COOKING` · starting work"
-            in text
-        )
+        assert "- **2026-04-25T10:30:00+00:00** · `COOKING` · starting work" in text
         # Original bullet preserved.
         assert "- **1970-01-01T00:00:00+00:00** · `INIT` · scaffolded" in text
 
@@ -100,9 +97,7 @@ class TestHeartbeat:
         _seed_log(sessions, "foo")
 
         # Pass session_id with no `sess-` prefix; should still resolve to foo.md
-        log_path = heartbeat(
-            tmp_path, "foo", "COOKING", "no prefix", now_fn=lambda: _FAKE_NOW
-        )
+        log_path = heartbeat(tmp_path, "foo", "COOKING", "no prefix", now_fn=lambda: _FAKE_NOW)
         assert log_path == sessions / "foo.md"
 
     def test_sess_prefix_stripped(self) -> None:
@@ -154,7 +149,7 @@ class TestHeartbeat:
         path = _seed_log(sessions, "foo")
 
         heartbeat(tmp_path, "sess-foo", "COOKING", "first", now_fn=lambda: _FAKE_NOW)
-        later = datetime(2026, 4, 25, 11, 0, tzinfo=timezone.utc)
+        later = datetime(2026, 4, 25, 11, 0, tzinfo=UTC)
         heartbeat(tmp_path, "sess-foo", "CHECKPOINT", "second", now_fn=lambda: later)
 
         text = path.read_text(encoding="utf-8")

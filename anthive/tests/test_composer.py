@@ -18,7 +18,6 @@ from pathlib import Path
 import pytest
 
 from anthive.composer import (
-    PROMPT_TEMPLATE,
     compose,
     find_agent,
     read_task_body,
@@ -222,8 +221,10 @@ class TestComposeHappyPath:
         # Agent path must be relative (not start with /)
         rel_agent = str(agent_path.relative_to(repo_root))
         assert rel_agent in output
-        assert not any(line.strip().startswith("/") and "python-developer.md" in line
-                       for line in output.splitlines())
+        assert not any(
+            line.strip().startswith("/") and "python-developer.md" in line
+            for line in output.splitlines()
+        )
 
     def test_allowed_paths_rendered_as_sorted_bullet_list(self, tmp_path: Path) -> None:
         """compose renders touches_paths as a sorted markdown bullet list."""
@@ -396,9 +397,9 @@ class TestCli:
             ["compose", target_id, "--dry-run", "--repo", str(REPO_ROOT)],
         )
 
-        assert cli_result.exit_code == 0, (
-            f"CLI exited with code {cli_result.exit_code}:\n{cli_result.output}"
-        )
+        assert (
+            cli_result.exit_code == 0
+        ), f"CLI exited with code {cli_result.exit_code}:\n{cli_result.output}"
         assert "GOAL" in cli_result.output
 
     def test_compose_with_no_arguments_fails_with_clear_error(self) -> None:
@@ -417,7 +418,7 @@ class TestCli:
         except ImportError:
             pytest.skip("typer.testing not available")
 
-        runner = CliRunner(mix_stderr=True)
+        runner = CliRunner()
         cli_result = runner.invoke(app, ["compose"])
 
         assert cli_result.exit_code != 0, "Expected non-zero exit when no arguments are given"

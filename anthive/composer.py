@@ -77,7 +77,7 @@ def read_task_body(task_path: Path) -> str:
         # Malformed frontmatter — return everything as body
         return text.strip()
 
-    body = rest[close + 4:]   # skip '\n---'
+    body = rest[close + 4 :]  # skip '\n---'
     if body.startswith("\n"):
         body = body[1:]
 
@@ -291,8 +291,7 @@ def compose(
     agent_path = find_agent(task.agent, repo_root)
     if agent_path is None:
         raise ValueError(
-            f"Agent {task.agent!r} not found under "
-            f"{(repo_root / '.claude' / 'agents')!s}"
+            f"Agent {task.agent!r} not found under " f"{(repo_root / '.claude' / 'agents')!s}"
         )
 
     agent_path_rel = str(agent_path.relative_to(repo_root))

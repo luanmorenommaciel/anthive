@@ -31,10 +31,10 @@ from rich.text import Text
 from .schemas import SessionLogFrontmatter, parse_session_log
 
 __all__ = [
-    "render_fleet_dashboard",
-    "watch",
-    "snapshot",
     "check_budget_alert",
+    "render_fleet_dashboard",
+    "snapshot",
+    "watch",
 ]
 
 logger = logging.getLogger(__name__)
@@ -87,7 +87,7 @@ def _load_sessions(
             continue
         try:
             fm = parse_session_log(p)
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.warning("monitor: could not parse %s: %s", p, exc)
             continue
 
@@ -132,7 +132,7 @@ def render_fleet_dashboard(
     for fm in active_sessions:
         try:
             metrics = lf_client.get_session_metrics(fm.session_id)
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.warning(
                 "monitor: get_session_metrics failed for %s: %s",
                 fm.session_id,
@@ -268,7 +268,7 @@ def check_budget_alert(
     for fm in active_sessions:
         try:
             metrics = lf_client.get_session_metrics(fm.session_id)
-        except Exception:  # noqa: BLE001
+        except Exception:
             continue
 
         cost_usd: float = metrics.get("cost_usd", 0.0) or 0.0

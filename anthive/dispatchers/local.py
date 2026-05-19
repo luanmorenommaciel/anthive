@@ -12,14 +12,14 @@ from __future__ import annotations
 import os
 import shutil
 import subprocess
-from datetime import datetime, timezone
+from collections.abc import Callable
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 from ..composer import find_agent, session_id_for, slugify
 from ..schemas import SessionLogFrontmatter, TaskFrontmatter, parse_session_log, write_session_log
 from .base import AlreadyDispatchedError, Dispatcher, PreflightError, SessionHandle
-
 
 __all__ = ["LocalDispatcher", "_default_runner"]
 
@@ -133,8 +133,9 @@ class LocalDispatcher(Dispatcher):
         # Best-effort: emit a lifecycle event if OTEL is active.
         try:
             from ..observability import emit_lifecycle_event
+
             emit_lifecycle_event(handle.session_id, "INIT", "INIT", note="dispatched")
-        except Exception:  # noqa: BLE001
+        except Exception:
             pass
 
         return handle
@@ -155,14 +156,14 @@ class LocalDispatcher(Dispatcher):
                 check=False,
             )
             return result.stdout or ""
-        except Exception:  # noqa: BLE001
+        except Exception:
             return ""
 
     def shutdown(self, handle: SessionHandle) -> None:
         """Kill the tmux session.  Best-effort: swallow errors if already gone."""
         try:
             self.runner(["tmux", "kill-session", "-t", handle.container], check=False)
-        except Exception:  # noqa: BLE001
+        except Exception:
             pass
 
     # ------------------------------------------------------------------
@@ -231,7 +232,7 @@ class LocalDispatcher(Dispatcher):
             raise AlreadyDispatchedError(
                 session_id=session_id_for(task.id),
                 hint=f"Remove the worktree at {worktree_path} and the branch "
-                     f"'session/{slug}' to re-dispatch.",
+                f"'session/{slug}' to re-dispatch.",
             )
 
         agent_path = find_agent(task.agent, repo_root)
@@ -261,7 +262,7 @@ class LocalDispatcher(Dispatcher):
         head_sha: str,
     ) -> None:
         """Build a SessionLogFrontmatter and write it to disk."""
-        now_iso = datetime.now(timezone.utc).isoformat()
+        now_iso = datetime.now(UTC).isoformat()
         session_id = session_id_for(task.id)
         slug: str = paths["slug"]
         model = self.config.get("default_model", "sonnet")
@@ -310,8 +311,10 @@ class LocalDispatcher(Dispatcher):
                 "tmux",
                 "new-session",
                 "-d",
-                "-s", pane_name,
-                "-c", str(worktree),
+                "-s",
+                pane_name,
+                "-c",
+                str(worktree),
                 f"claude < {prompt_file}",
             ],
             env=child_env,
@@ -323,14 +326,9 @@ class LocalDispatcher(Dispatcher):
         These vars are intentionally NOT set in the parent CLI process so that
         anthive's own spans are not accidentally attributed to a session.
         """
-        endpoint = self.observability.get(
-            "otel_endpoint", "http://localhost:3000/api/public/otel"
-        )
+        endpoint = self.observability.get("otel_endpoint", "http://localhost:3000/api/public/otel")
         resource_attrs = (
-            f"session.id={slug},"
-            f"task.id={task.id},"
-            f"agent={task.agent},"
-            f"mode=local"
+            f"session.id={slug}," f"task.id={task.id}," f"agent={task.agent}," f"mode=local"
         )
         return {
             "CLAUDE_CODE_ENABLE_TELEMETRY": "1",

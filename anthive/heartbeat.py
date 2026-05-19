@@ -19,9 +19,9 @@ a :class:`pydantic.ValidationError`, which the CLI surfaces as exit code 2.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from collections.abc import Callable
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Callable
 
 from .schemas import (
     SessionLogFrontmatter,
@@ -36,7 +36,7 @@ __all__ = ["heartbeat", "session_id_to_slug"]
 def session_id_to_slug(session_id: str) -> str:
     """Strip an optional ``sess-`` prefix; the remainder is the log slug."""
     if session_id.startswith("sess-"):
-        return session_id[len("sess-"):]
+        return session_id[len("sess-") :]
     return session_id
 
 
@@ -106,7 +106,7 @@ def heartbeat(
 
 
 def _now_utc() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 def _read_body(path: Path) -> str:

@@ -14,8 +14,7 @@ import tomllib
 from pathlib import Path
 from typing import Any
 
-
-__all__ = ["load_config", "deep_merge", "DEFAULTS"]
+__all__ = ["DEFAULTS", "deep_merge", "load_config"]
 
 
 # ---------------------------------------------------------------------------

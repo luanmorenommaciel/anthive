@@ -482,14 +482,15 @@ class TestRoundTripAndDogfood:
         # session names recovered from logs/merge-queue.md, which the
         # scanner classifies as best-effort fallbacks.
         import re
+
         strict = re.compile(r"^(p\d+-[a-z0-9-]+|T-\d{8}-[a-z0-9-]+|B-[A-Z0-9-]+)$")
         slug = re.compile(r"^[a-z0-9][a-z0-9-]*$")
         for entry in [*result.ready, *result.blocked]:
             assert strict.match(entry.id), f"Frontmatter id must be strict: {entry.id!r}"
         for entry in [*result.done, *result.in_progress]:
-            assert strict.match(entry.id) or slug.match(entry.id), (
-                f"Unexpected ID format: {entry.id!r}"
-            )
+            assert strict.match(entry.id) or slug.match(
+                entry.id
+            ), f"Unexpected ID format: {entry.id!r}"
 
 
 # ---------------------------------------------------------------------------
@@ -504,6 +505,7 @@ class TestCliSmoke:
         """anthive scan --json produces output that validates as a ReadyList."""
         try:
             from typer.testing import CliRunner
+
             from anthive.cli import app
         except ImportError:
             pytest.skip("typer.testing not available")

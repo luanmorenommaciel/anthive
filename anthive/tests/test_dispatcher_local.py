@@ -21,7 +21,7 @@ from typing import Any
 
 import pytest
 
-from anthive.config import DEFAULTS, load_config
+from anthive.config import load_config
 from anthive.dispatchers.base import AlreadyDispatchedError, PreflightError
 from anthive.dispatchers.local import LocalDispatcher
 from anthive.schemas import TaskFrontmatter, parse_session_log
@@ -59,9 +59,7 @@ def _make_fake_repo(tmp_path: Path) -> Path:
     # Agent definition expected by _preflight / find_agent
     agent_dir = repo / ".claude" / "agents" / "python"
     agent_dir.mkdir(parents=True)
-    (agent_dir / "python-developer.md").write_text(
-        "# python-developer agent", encoding="utf-8"
-    )
+    (agent_dir / "python-developer.md").write_text("# python-developer agent", encoding="utf-8")
     # Log + task dirs
     (repo / "logs" / "sessions").mkdir(parents=True)
     (repo / "tasks").mkdir()
@@ -117,9 +115,7 @@ class RecordingRunner:
             returncode: int = 0
 
         result = _Result()
-        result.stdout = (
-            self.head_sha if list(cmd[:2]) == ["git", "rev-parse"] else ""
-        )
+        result.stdout = self.head_sha if list(cmd[:2]) == ["git", "rev-parse"] else ""
         return result
 
     def commands(self) -> list[list[str]]:
@@ -167,9 +163,7 @@ class TestPreflight:
         repo = _make_fake_repo(tmp_path)
         task = _make_task()
         runner = RecordingRunner()
-        dispatcher = LocalDispatcher(
-            _LOCAL_CFG, runner=runner, which_fn=_which_all_present
-        )
+        dispatcher = LocalDispatcher(_LOCAL_CFG, runner=runner, which_fn=_which_all_present)
         # If _preflight raises, the test fails automatically.
         handle = dispatcher.dispatch(task, "test prompt", repo)
         assert handle.task_id == task.id
@@ -224,9 +218,7 @@ class TestIdempotency:
         repo = _make_fake_repo(tmp_path)
         task = _make_task()
         runner = RecordingRunner()
-        dispatcher = LocalDispatcher(
-            _LOCAL_CFG, runner=runner, which_fn=_which_all_present
-        )
+        dispatcher = LocalDispatcher(_LOCAL_CFG, runner=runner, which_fn=_which_all_present)
 
         # Pre-create the worktree path to simulate a previous dispatch.
         from anthive.composer import slugify
@@ -243,7 +235,8 @@ class TestIdempotency:
 
         # No git worktree add call should have been made.
         worktree_calls = [
-            cmd for cmd in runner.commands()[calls_before:]
+            cmd
+            for cmd in runner.commands()[calls_before:]
             if list(cmd[:3]) == ["git", "worktree", "add"]
         ]
         assert worktree_calls == [], "git worktree add must not be called on re-dispatch"
@@ -277,9 +270,7 @@ class TestWorktreeAndLog:
         self, repo: Path, runner: RecordingRunner, task: TaskFrontmatter
     ) -> tuple[Any, RecordingRunner]:
         """Dispatch once and return (handle, runner) for inspection."""
-        dispatcher = LocalDispatcher(
-            _LOCAL_CFG, runner=runner, which_fn=_which_all_present
-        )
+        dispatcher = LocalDispatcher(_LOCAL_CFG, runner=runner, which_fn=_which_all_present)
         handle = dispatcher.dispatch(task, "hello prompt", repo)
         return handle, runner
 
@@ -289,7 +280,7 @@ class TestWorktreeAndLog:
         """git worktree add must include -b session/<slug> and the resolved path."""
         from anthive.composer import slugify
 
-        handle, runner = handle_and_runner
+        _handle, runner = handle_and_runner
         slug = slugify(task.id)
         found = runner.find_call("git", "worktree", "add")
         assert found is not None, "git worktree add call not recorded"
@@ -424,9 +415,7 @@ class TestTailAndShutdown:
         repo = _make_fake_repo(tmp_path)
         task = _make_task()
         runner = RecordingRunner()
-        dispatcher = LocalDispatcher(
-            _LOCAL_CFG, runner=runner, which_fn=_which_all_present
-        )
+        dispatcher = LocalDispatcher(_LOCAL_CFG, runner=runner, which_fn=_which_all_present)
         handle = dispatcher.dispatch(task, "prompt", repo)
         # Replace runner with a fresh one for the tail/shutdown assertions.
         fresh_runner = RecordingRunner()
@@ -448,9 +437,7 @@ class TestTailAndShutdown:
         assert "-S" in cmd_list
         assert "-10" in cmd_list
 
-    def test_shutdown_runs_kill_session_and_tolerates_failure(
-        self, tmp_path: Path
-    ) -> None:
+    def test_shutdown_runs_kill_session_and_tolerates_failure(self, tmp_path: Path) -> None:
         """shutdown() must issue tmux kill-session and not raise on failure."""
 
         class FailingRunner:
@@ -468,9 +455,7 @@ class TestTailAndShutdown:
 
         # Dispatch with a recording runner, then swap to the failing runner.
         good_runner = RecordingRunner()
-        dispatcher = LocalDispatcher(
-            _LOCAL_CFG, runner=good_runner, which_fn=_which_all_present
-        )
+        dispatcher = LocalDispatcher(_LOCAL_CFG, runner=good_runner, which_fn=_which_all_present)
         handle = dispatcher.dispatch(task, "prompt", repo)
 
         fail_runner = FailingRunner()
@@ -499,15 +484,11 @@ class TestConfigLoading:
         assert cfg["dispatcher"]["local"]["tmux_session_prefix"] == "anthive-"
         assert cfg["dispatcher"]["local"]["default_model"] == "sonnet"
 
-    def test_load_config_deep_merges_user_values_over_defaults(
-        self, tmp_path: Path
-    ) -> None:
+    def test_load_config_deep_merges_user_values_over_defaults(self, tmp_path: Path) -> None:
         """User swarm.toml values override specific keys while retaining other defaults."""
         swarm_toml = tmp_path / "swarm.toml"
         swarm_toml.write_text(
-            "[dispatcher.local]\n"
-            'max_concurrent_sessions = 8\n'
-            'default_model = "opus"\n',
+            "[dispatcher.local]\n" "max_concurrent_sessions = 8\n" 'default_model = "opus"\n',
             encoding="utf-8",
         )
         cfg = load_config(tmp_path)
@@ -533,10 +514,7 @@ class TestCliCloudGuard:
 
         from anthive.cli import app
 
-        # mix_stderr=True (default) routes stderr into result.output so we can
-        # check both streams in a single string without accessing result.stderr
-        # separately (which raises ValueError when not captured apart).
-        cli_runner = CliRunner(mix_stderr=True)
+        cli_runner = CliRunner()
         result = cli_runner.invoke(app, ["dispatch", "--cloud"])
         assert result.exit_code == 2
         output = result.output or ""

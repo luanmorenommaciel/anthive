@@ -6,13 +6,13 @@ Covers all four file-system contracts:
   - Contract 3: SessionLogFrontmatter
   - Contract 4: MergeQueueRow
 
-Groups A–E mirror the test plan in tasks/p0.md.
+Groups A-E mirror the test plan in tasks/p0.md.
 """
 
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
@@ -40,7 +40,7 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 CONTRACTS = REPO_ROOT / "tasks/agentswarm/contracts"
 REF_LOGS = REPO_ROOT / "examples/reference-logs"
 
-_EPOCH = datetime(1970, 1, 1, tzinfo=timezone.utc)
+_EPOCH = datetime(1970, 1, 1, tzinfo=UTC)
 
 # ---------------------------------------------------------------------------
 # Group A — TaskFrontmatter
@@ -538,9 +538,7 @@ class TestHelpersAndEdgeCases:
 
     def test_session_log_all_valid_statuses_accepted(self) -> None:
         """All six valid SessionLogFrontmatter statuses parse without error."""
-        valid_statuses = [
-            "INIT", "COOKING", "CHECKPOINT", "READY-TO-MERGE", "MERGED", "BLOCKED"
-        ]
+        valid_statuses = ["INIT", "COOKING", "CHECKPOINT", "READY-TO-MERGE", "MERGED", "BLOCKED"]
         for status in valid_statuses:
             fm = SessionLogFrontmatter(
                 session_id="s1",

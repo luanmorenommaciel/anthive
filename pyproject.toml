@@ -70,6 +70,14 @@ target-version = "py311"
 select = ["E", "F", "I", "N", "W", "B", "UP", "RUF"]
 ignore = ["E501"]  # line length handled by black
 
+[tool.ruff.lint.per-file-ignores]
+# Typer idiom: `param: T = typer.Option(default, ...)` legitimately uses a
+# function call (typer.Option, Path.cwd()) as a default value.
+"anthive/cli.py" = ["B008"]
+# Test names mirror schema regex patterns (T-YYYYMMDD-slug, pN-slug); the
+# uppercase letters in identifiers are intentional documentation.
+"anthive/tests/**" = ["N802", "N806"]
+
 [tool.black]
 line-length = 100
 target-version = ["py311"]

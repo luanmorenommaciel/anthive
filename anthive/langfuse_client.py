@@ -18,7 +18,7 @@ import logging
 
 import httpx
 
-__all__ = ["LangfuseClient", "ZERO_METRICS"]
+__all__ = ["ZERO_METRICS", "LangfuseClient"]
 
 logger = logging.getLogger(__name__)
 
@@ -118,7 +118,7 @@ class LangfuseClient:
                 "trace_id": trace_id,
                 "url": url,
             }
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.warning(
                 "get_session_metrics: failed to parse Langfuse response for %s: %s",
                 session_id,

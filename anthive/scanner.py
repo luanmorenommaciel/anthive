@@ -13,7 +13,7 @@ from __future__ import annotations
 import itertools
 import logging
 import re
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from .schemas import (
@@ -113,7 +113,7 @@ def parse_backlog_blocks(path: Path) -> list[TaskFrontmatter]:
         try:
             fm = TaskFrontmatter.model_validate(data)
             results.append(fm)
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.warning("Skipping backlog block %r in %s: %s", block_id, path, exc)
 
     return results
@@ -129,7 +129,7 @@ def _detect_cycles(tasks: dict[str, TaskFrontmatter]) -> set[str]:
 
     Uses iterative DFS with three-colour marking (white/grey/black).
     """
-    WHITE, GREY, BLACK = 0, 1, 2
+    WHITE, GREY, BLACK = 0, 1, 2  # noqa: N806 — canonical DFS colouring
     colour: dict[str, int] = {tid: WHITE for tid in tasks}
     cycle_ids: set[str] = set()
 
@@ -245,7 +245,7 @@ def _collect_in_progress(
             continue
         try:
             log = parse_session_log(log_path)
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.warning("Skipping session log %s: %s", log_path, exc)
             continue
 
@@ -285,7 +285,7 @@ def _collect_done(
     if merge_queue_path.exists():
         try:
             rows = parse_merge_queue(merge_queue_path)
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.warning("Could not parse merge queue %s: %s", merge_queue_path, exc)
 
     for row in rows:
@@ -301,9 +301,7 @@ def _collect_done(
         done_ids.add(task_id)
         if task_id not in seen_ids:
             seen_ids.add(task_id)
-            merged_at: datetime = (
-                session_log.created if session_log else datetime.now(timezone.utc)
-            )
+            merged_at: datetime = session_log.created if session_log else datetime.now(UTC)
             entries.append(DoneEntry(id=task_id, merged_at=merged_at))
 
     # --- From task frontmatter directly
@@ -311,7 +309,7 @@ def _collect_done(
         if task.status == "done" and tid not in seen_ids:
             done_ids.add(tid)
             seen_ids.add(tid)
-            merged_at = task.created or datetime.now(timezone.utc)
+            merged_at = task.created or datetime.now(UTC)
             entries.append(DoneEntry(id=tid, merged_at=merged_at))
 
     return done_ids, entries
@@ -354,7 +352,7 @@ def scan(
                 continue
             try:
                 fm = parse_task_doc(md)
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 logger.warning("Skipping %s (parse error): %s", md, exc)
                 continue
             if fm is None:
@@ -424,7 +422,7 @@ def scan(
     conflicts = _detect_conflicts(ready_entries)
 
     return ReadyList(
-        scanned_at=datetime.now(timezone.utc),
+        scanned_at=datetime.now(UTC),
         repo_root=str(repo_root.resolve()),
         tasks_dir=str(tasks_dir),
         ready=ready_entries,

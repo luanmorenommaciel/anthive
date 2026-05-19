@@ -30,7 +30,7 @@ by newer anthive versions do not break older readers.
 from __future__ import annotations
 
 import re
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Literal
 
@@ -40,7 +40,7 @@ from pydantic import BaseModel, ConfigDict, field_validator
 # ---------------------------------------------------------------------------
 # Sentinel used when a datetime field holds a Jinja placeholder ({{…}}).
 # ---------------------------------------------------------------------------
-_EPOCH = datetime(1970, 1, 1, tzinfo=timezone.utc)
+_EPOCH = datetime(1970, 1, 1, tzinfo=UTC)
 _PLACEHOLDER_RE = re.compile(r"^\{\{[^}]+\}\}$")
 
 
@@ -92,7 +92,7 @@ def _split_frontmatter(text: str) -> tuple[dict, str]:
         raise ValueError("Malformed frontmatter: opening '---' has no closing '---'")
 
     raw_yaml = rest[:close]
-    body = rest[close + 4:]  # skip '\n---'
+    body = rest[close + 4 :]  # skip '\n---'
     if body.startswith("\n"):
         body = body[1:]
 
@@ -110,9 +110,7 @@ def _split_frontmatter(text: str) -> tuple[dict, str]:
 # Contract 1 — TaskFrontmatter
 # ---------------------------------------------------------------------------
 
-_TASK_ID_RE = re.compile(
-    r"^(T-\d{8}-[a-z0-9-]+|p\d+-[a-z0-9-]+|B-[A-Z0-9][A-Z0-9-]*)$"
-)
+_TASK_ID_RE = re.compile(r"^(T-\d{8}-[a-z0-9-]+|p\d+-[a-z0-9-]+|B-[A-Z0-9][A-Z0-9-]*)$")
 
 
 class TaskFrontmatter(BaseModel):
@@ -142,9 +140,7 @@ class TaskFrontmatter(BaseModel):
     @classmethod
     def _validate_id(cls, v: str) -> str:
         if not _TASK_ID_RE.match(v):
-            raise ValueError(
-                f"Task id {v!r} must match T-YYYYMMDD-slug or pN-slug pattern"
-            )
+            raise ValueError(f"Task id {v!r} must match T-YYYYMMDD-slug or pN-slug pattern")
         return v
 
     @field_validator("created", mode="before")

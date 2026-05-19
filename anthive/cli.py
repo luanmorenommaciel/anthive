@@ -75,7 +75,7 @@ def scan(
     def _run_once() -> None:
         try:
             result = do_scan(repo_root)
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             typer.echo(f"Error scanning {repo_root}: {exc}", err=True)
             raise typer.Exit(code=2) from exc
 
@@ -199,7 +199,7 @@ def compose(
 
     prompts_dir = repo_root / "prompts"
 
-    for entry, task_path in targets:
+    for _entry, task_path in targets:
         fm = parse_task_doc(task_path)
         if fm is None:
             typer.echo(
@@ -209,11 +209,7 @@ def compose(
             raise typer.Exit(code=1)
 
         # other_active = all ready tasks except this one
-        other_active = [
-            v
-            for k, v in entry_frontmatters.items()
-            if k != fm.id
-        ]
+        other_active = [v for k, v in entry_frontmatters.items() if k != fm.id]
 
         try:
             prompt_text = do_compose(fm, task_path, repo_root, other_active)  # type: ignore[arg-type]
@@ -241,8 +237,12 @@ def compose(
 def dispatch(
     task_id: str | None = typer.Argument(None, help="Task ID to dispatch; omit if --all-ready."),
     all_ready: bool = typer.Option(False, "--all-ready", help="Dispatch every ready task."),
-    local: bool = typer.Option(True, "--local/--no-local", help="Dispatch locally via tmux (default)."),
-    cloud: bool = typer.Option(False, "--cloud", help="Dispatch via Managed Agents (p6 — not yet implemented)."),
+    local: bool = typer.Option(
+        True, "--local/--no-local", help="Dispatch locally via tmux (default)."
+    ),
+    cloud: bool = typer.Option(
+        False, "--cloud", help="Dispatch via Managed Agents (p6 — not yet implemented)."
+    ),
     dry_run: bool = typer.Option(False, "--dry-run", help="Print actions without executing."),
     yes: bool = typer.Option(False, "--yes", "-y", help="Skip the confirmation prompt."),
     json_out: bool = typer.Option(False, "--json", help="Emit machine-readable JSON to stdout."),
@@ -278,7 +278,7 @@ def dispatch(
     # ------------------------------------------------------------------
     try:
         result = do_scan(repo_root)
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         typer.echo(f"Error scanning {repo_root}: {exc}", err=True)
         raise typer.Exit(code=1) from exc
 
@@ -319,7 +319,6 @@ def dispatch(
     existing_count = _count_tmux_sessions(prefix)
 
     schedulable = max(0, max_concurrent - existing_count)
-    over_cap = len(targets) > schedulable
 
     if schedulable == 0:
         typer.echo(
@@ -386,7 +385,8 @@ def dispatch(
             continue
 
         # Resolve prompt: use existing file if present, otherwise compose on the fly.
-        from .composer import compose as do_compose, slugify
+        from .composer import compose as do_compose
+        from .composer import slugify
 
         prompts_dir = repo_root / cfg["paths"].get("prompts_dir", "prompts/")
         prompt_file = prompts_dir / f"{fm.id}.md"
@@ -395,9 +395,7 @@ def dispatch(
             prompt_text = prompt_file.read_text(encoding="utf-8")
         else:
             other_active_entries = [
-                parse_task_doc(repo_root / e.path)
-                for e in result.ready
-                if e.id != fm.id
+                parse_task_doc(repo_root / e.path) for e in result.ready if e.id != fm.id
             ]
             other_active = [t for t in other_active_entries if t is not None]
             try:
@@ -429,17 +427,18 @@ def dispatch(
             raise typer.Exit(code=1) from exc
 
         handles.append(handle)
-        dispatched_ids.append({
-            "session_id": handle.session_id,
-            "task_id": handle.task_id,
-            "container": handle.container,
-            "log_path": str(handle.log_path),
-            "branch": handle.branch,
-        })
+        dispatched_ids.append(
+            {
+                "session_id": handle.session_id,
+                "task_id": handle.task_id,
+                "container": handle.container,
+                "log_path": str(handle.log_path),
+                "branch": handle.branch,
+            }
+        )
 
         out.print(
-            f"[green]✓[/] [cyan]{handle.session_id}[/] at "
-            f"tmux://[bold]{handle.container}[/]"
+            f"[green]✓[/] [cyan]{handle.session_id}[/] at " f"tmux://[bold]{handle.container}[/]"
         )
         out.print(f"  log: [dim]{handle.log_path}[/]")
 
@@ -448,6 +447,7 @@ def dispatch(
     # ------------------------------------------------------------------
     if json_out and dispatched_ids:
         import json
+
         typer.echo(json.dumps(dispatched_ids, indent=2))
 
     # ------------------------------------------------------------------
@@ -505,7 +505,7 @@ def watch(
     # Best-effort OTEL init; never crash the CLI.
     try:
         init_tracing(endpoint=cfg["observability"].get("otel_endpoint"))
-    except Exception:  # noqa: BLE001
+    except Exception:
         pass
 
     lf_client = LangfuseClient(
@@ -516,9 +516,7 @@ def watch(
 
     sessions_dir = repo_root / "logs" / "sessions"
     if not sessions_dir.exists():
-        out.print(
-            "(no sessions yet — dispatch one with [cyan]anthive dispatch <id>[/])"
-        )
+        out.print("(no sessions yet — dispatch one with [cyan]anthive dispatch <id>[/])")
         raise typer.Exit(code=0)
 
     only_list = [s.strip() for s in only.split(",")] if only else None
@@ -562,7 +560,7 @@ def status(
     # Best-effort OTEL init.
     try:
         init_tracing(endpoint=cfg["observability"].get("otel_endpoint"))
-    except Exception:  # noqa: BLE001
+    except Exception:
         pass
 
     lf_client = LangfuseClient(
@@ -573,9 +571,7 @@ def status(
 
     sessions_dir = repo_root / "logs" / "sessions"
     if not sessions_dir.exists():
-        out.print(
-            "(no sessions yet — dispatch one with [cyan]anthive dispatch <id>[/])"
-        )
+        out.print("(no sessions yet — dispatch one with [cyan]anthive dispatch <id>[/])")
         raise typer.Exit(code=0)
 
     only_list = [s.strip() for s in only.split(",")] if only else None
@@ -588,7 +584,7 @@ def status(
                 continue
             try:
                 fm = parse_session_log(p)
-            except Exception:  # noqa: BLE001
+            except Exception:
                 continue
             if only_list and not any(f in fm.session_id for f in only_list):
                 continue
@@ -617,7 +613,9 @@ def status(
 @app.command()
 def merge(
     dry_run: bool = typer.Option(False, "--dry-run", help="Show what would merge; do not execute."),
-    auto: bool = typer.Option(False, "--auto", "-a", help="Skip confirmation prompts (CI-friendly)."),
+    auto: bool = typer.Option(
+        False, "--auto", "-a", help="Skip confirmation prompts (CI-friendly)."
+    ),
     repo_root: Path = typer.Option(Path.cwd(), "--repo", help="Repo root (default: cwd)."),
     json_out: bool = typer.Option(False, "--json", help="Emit machine-readable JSON to stdout."),
 ) -> None:
@@ -636,11 +634,11 @@ def merge(
     """
     import json as _json
 
-    from .merger import MergeResult, reconcile
+    from .merger import reconcile
 
     try:
         results = reconcile(repo_root, dry_run=dry_run, auto=auto)
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         typer.echo(f"merge failed: {exc}", err=True)
         raise typer.Exit(code=1) from exc
 
@@ -707,7 +705,9 @@ def _render_merge_results(out: Console, results: list) -> None:
 @app.command()
 def heartbeat(
     session_id: str = typer.Argument(..., help="Session id, with or without 'sess-' prefix."),
-    state: str = typer.Argument(..., help="New status (INIT/COOKING/CHECKPOINT/READY-TO-MERGE/MERGED/BLOCKED)."),
+    state: str = typer.Argument(
+        ..., help="New status (INIT/COOKING/CHECKPOINT/READY-TO-MERGE/MERGED/BLOCKED)."
+    ),
     note: str = typer.Argument("", help="Optional one-line note."),
     repo_root: Path = typer.Option(Path.cwd(), "--repo", help="Repo root (default: cwd)."),
 ) -> None:

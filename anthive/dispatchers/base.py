@@ -12,13 +12,12 @@ from pathlib import Path
 
 from ..schemas import TaskFrontmatter
 
-
 __all__ = [
-    "SessionHandle",
-    "DispatchError",
     "AlreadyDispatchedError",
-    "PreflightError",
+    "DispatchError",
     "Dispatcher",
+    "PreflightError",
+    "SessionHandle",
 ]
 
 
@@ -40,9 +39,9 @@ class SessionHandle:
     slug: str
     branch: str
     worktree: Path
-    container: str    # tmux session name (local) or Managed Agents session id (cloud)
+    container: str  # tmux session name (local) or Managed Agents session id (cloud)
     log_path: Path
-    mode: str         # "local" | "cloud"
+    mode: str  # "local" | "cloud"
 
 
 # ---------------------------------------------------------------------------

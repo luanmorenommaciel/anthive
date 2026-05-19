@@ -16,8 +16,8 @@ from __future__ import annotations
 
 import logging
 import os
+from collections.abc import Generator
 from contextlib import contextmanager
-from typing import Generator
 
 from opentelemetry import trace
 from opentelemetry.sdk.resources import Resource
@@ -25,7 +25,7 @@ from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
 from opentelemetry.trace import NonRecordingSpan, Span
 
-__all__ = ["init_tracing", "session_span", "emit_lifecycle_event"]
+__all__ = ["emit_lifecycle_event", "init_tracing", "session_span"]
 
 logger = logging.getLogger(__name__)
 
@@ -39,7 +39,7 @@ def init_tracing(
     resource_attributes: dict[str, str] | None = None,
 ) -> None:
     """Initialize OTEL → OTLP HTTP exporter. Idempotent; safe to call once."""
-    global _initialized  # noqa: PLW0603
+    global _initialized
 
     if _initialized:
         logger.debug("init_tracing: already initialized, skipping.")
@@ -64,7 +64,7 @@ def init_tracing(
         trace.set_tracer_provider(provider)
         _initialized = True
         logger.debug("init_tracing: OTLP exporter configured at %s", resolved_endpoint)
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         logger.warning(
             "init_tracing: could not configure OTLP exporter at %s (%s). "
             "Falling back to no-op tracer.",

@@ -16,19 +16,20 @@ from __future__ import annotations
 
 import logging
 import subprocess
-from dataclasses import dataclass, field
+from collections.abc import Callable
+from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Callable, Literal
+from typing import Literal
 
 from .schemas import MergeQueueRow, parse_merge_queue
 
 __all__ = [
     "MergeResult",
-    "reconcile",
-    "topo_pick",
     "archive_session_log",
     "mark_row_merged",
+    "reconcile",
+    "topo_pick",
     "write_decision_log",
 ]
 
@@ -232,9 +233,7 @@ def reconcile(
             break
 
         if dry_run:
-            results.append(
-                MergeResult(next_row.session_name, "would_merge", pr=next_row.pr)
-            )
+            results.append(MergeResult(next_row.session_name, "would_merge", pr=next_row.pr))
             unmerged.remove(next_row)
             merged_names.add(next_row.session_name)
             continue

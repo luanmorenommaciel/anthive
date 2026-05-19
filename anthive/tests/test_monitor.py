@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import io
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -22,7 +22,7 @@ from rich.console import Console
 from rich.panel import Panel
 
 import anthive.observability as obs_module
-from anthive.langfuse_client import ZERO_METRICS, LangfuseClient
+from anthive.langfuse_client import LangfuseClient
 from anthive.monitor import check_budget_alert, render_fleet_dashboard
 from anthive.schemas import SessionLogFrontmatter, write_session_log
 
@@ -32,7 +32,7 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 # Module-level helpers
 # ---------------------------------------------------------------------------
 
-_EPOCH = datetime(1970, 1, 1, tzinfo=timezone.utc)
+_EPOCH = datetime(1970, 1, 1, tzinfo=UTC)
 
 
 class FakeLangfuseClient:
@@ -203,8 +203,6 @@ class TestObservability:
         """session_span yields a span-like object even without prior init_tracing."""
         assert obs_module._initialized is False  # sanity
 
-        from opentelemetry.trace import Span
-
         with obs_module.session_span("s1", "T-001", "python-developer", "local") as span:
             # Must yield something with the Span interface (at minimum not crash).
             assert hasattr(span, "add_event")
@@ -343,7 +341,9 @@ class TestBudgetAlert:
                 "url": None,
             },
         }
-        result = check_budget_alert(sessions_dir, FakeLangfuseClient(metrics=fake_metrics), threshold=5.0)
+        result = check_budget_alert(
+            sessions_dir, FakeLangfuseClient(metrics=fake_metrics), threshold=5.0
+        )
 
         assert len(result) == 1
         sid, cost = result[0]
@@ -376,7 +376,9 @@ class TestBudgetAlert:
                 "url": None,
             },
         }
-        result = check_budget_alert(sessions_dir, FakeLangfuseClient(metrics=fake_metrics), threshold=10.0)
+        result = check_budget_alert(
+            sessions_dir, FakeLangfuseClient(metrics=fake_metrics), threshold=10.0
+        )
 
         assert result == []
 
