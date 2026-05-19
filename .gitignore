@@ -44,3 +44,5 @@ tasks/pending/
 
 # Docker volumes
 docker/*_pgdata/
+
+.claude/sdd/.detected-stack.md
